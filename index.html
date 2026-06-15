@@ -547,7 +547,7 @@ Include ALL dogs in predictions ordered 1st to last. If multiple races exist, an
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': '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', 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
