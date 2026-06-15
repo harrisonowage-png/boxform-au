@@ -1,0 +1,35 @@
+{
+  "name": "BoxForm AU – Greyhound Race Analyser",
+  "short_name": "BoxForm AU",
+  "description": "Australian greyhound race form analyser powered by AI. Upload a race card PDF and get predicted finishing orders.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "categories": ["sports", "utilities"],
+  "lang": "en-AU",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Analyse Race Card",
+      "short_name": "Analyse",
+      "description": "Upload a new race card PDF",
+      "url": "/"
+    }
+  ]
+}

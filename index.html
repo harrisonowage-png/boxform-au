@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BoxForm AU" />
+  <meta name="description" content="Australian greyhound race form analyser powered by AI" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>BoxForm AU</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #21262d;
+      --border:    rgba(255,255,255,0.08);
+      --gold:      #f0a500;
+      --gold-dim:  rgba(240,165,0,0.15);
+      --green:     #3fb950;
+      --red:       #f85149;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #388bfd;
+      --radius:    14px;
+      --safe-top:  env(safe-area-inset-top, 0px);
+      --safe-bot:  env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bot);
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(13,17,23,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--gold);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .logo-text { line-height: 1.1; }
+    .logo-text strong { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+    .logo-text span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; }
+    .header-badge {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--gold);
+      border: 1px solid rgba(240,165,0,0.35);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── MAIN ── */
+    main { flex: 1; padding: 20px 16px 32px; max-width: 600px; margin: 0 auto; width: 100%; }
+
+    /* ── UPLOAD ZONE ── */
+    .hero-label {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+      line-height: 1.15;
+    }
+    .hero-label em {
+      font-style: normal;
+      color: var(--gold);
+    }
+    .hero-sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+
+    .drop-zone {
+      border: 2px dashed rgba(240,165,0,0.3);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(240,165,0,0.04);
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .drop-zone:hover, .drop-zone.over {
+      border-color: var(--gold);
+      background: rgba(240,165,0,0.08);
+    }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-icon { font-size: 40px; margin-bottom: 10px; }
+    .drop-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .drop-hint { font-size: 13px; color: var(--muted); }
+    .file-chosen { color: var(--gold); font-weight: 600; }
+
+    .btn-analyse {
+      width: 100%;
+      padding: 15px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--gold);
+      color: #0d1117;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-analyse:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-analyse:not(:disabled):active { transform: scale(0.98); }
+
+    .error-box {
+      background: rgba(248,81,73,0.1);
+      border: 1px solid rgba(248,81,73,0.3);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: #ffa198;
+      font-size: 13px;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── SPINNER ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(13,17,23,0.3);
+      border-top-color: #0d1117;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── LOADING STATE ── */
+    .loading-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .loading-dog { font-size: 56px; animation: run 0.6s steps(2) infinite; }
+    @keyframes run {
+      0%   { transform: translateX(-4px) scaleX(1); }
+      50%  { transform: translateX(4px) scaleX(1); }
+      100% { transform: translateX(-4px) scaleX(1); }
+    }
+    .loading-title { font-size: 18px; font-weight: 700; margin: 16px 0 6px; }
+    .loading-sub { color: var(--muted); font-size: 14px; }
+
+    /* ── RESULTS ── */
+    .race-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .race-eyebrow {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--gold);
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+    .race-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .race-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+    .meta-pill {
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      color: var(--muted);
+    }
+    .race-summary {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── PREDICTIONS ── */
+    .section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .dog-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: border-color 0.2s;
+    }
+    .dog-card.top3 { background: rgba(240,165,0,0.04); }
+    .dog-card.first { border-color: rgba(240,165,0,0.4); }
+
+    .pos-col { min-width: 28px; text-align: center; padding-top: 2px; }
+    .pos-medal { font-size: 22px; line-height: 1; }
+    .pos-num { font-size: 16px; font-weight: 700; color: var(--muted); }
+
+    /* Box badge colours matching Aust jackets */
+    .box-badge {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+    .dog-body { flex: 1; min-width: 0; }
+    .dog-name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+    .dog-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .dog-meta span { font-size: 12px; color: var(--muted); }
+    .form-string { font-family: monospace; font-size: 12px; color: var(--accent); letter-spacing: 0.04em; }
+    .dog-reason { font-size: 13px; color: #8b949e; line-height: 1.55; margin-top: 8px; }
+
+    /* confidence */
+    .conf-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+    .conf-pip {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--surface2);
+    }
+    .conf-pip.on { background: var(--green); }
+    .conf-label { font-size: 11px; color: var(--muted); }
+
+    /* ── KEY FACTORS ── */
+    .factors-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .factor-item {
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 13px; color: var(--text);
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      line-height: 1.5;
+    }
+    .factor-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .factor-arrow { color: var(--gold); flex-shrink: 0; margin-top: 1px; }
+
+    /* ── DISCLAIMER ── */
+    .disclaimer {
+      background: rgba(240,165,0,0.06);
+      border: 1px solid rgba(240,165,0,0.2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #b3883a;
+      line-height: 1.55;
+      margin-bottom: 20px;
+    }
+
+    /* ── BACK BUTTON ── */
+    .btn-back {
+      width: 100%;
+      padding: 13px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-back:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+    /* ── INSTALL BANNER ── */
+    #install-banner {
+      display: none;
+      position: fixed;
+      bottom: calc(16px + var(--safe-bot));
+      left: 16px; right: 16px;
+      background: var(--surface2);
+      border: 1px solid var(--gold);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      z-index: 100;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      animation: slideup 0.3s ease;
+    }
+    @keyframes slideup { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    #install-banner.visible { display: flex; align-items: center; gap: 12px; }
+    .install-text { flex: 1; font-size: 13px; line-height: 1.4; }
+    .install-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+    .btn-install {
+      background: var(--gold);
+      color: #0d1117;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-dismiss {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo-icon">🐕</div>
+    <div class="logo-text">
+      <strong>BoxForm AU</strong>
+      <span>Greyhound Race Analyser</span>
+    </div>
+    <div class="header-badge">AU RACING</div>
+  </header>
+
+  <main id="main-content">
+    <!-- Upload Screen -->
+    <div id="screen-upload">
+      <h1 class="hero-label">Analyse your<br><em>race form guide</em></h1>
+      <p class="hero-sub">Upload an Australian greyhound race card PDF — BoxForm reads the form, grades, box draws and times, then tips the field.</p>
+
+      <div id="error-box" class="error-box" style="display:none"></div>
+
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" accept="application/pdf" id="file-input" />
+        <div class="drop-icon">📋</div>
+        <div class="drop-title" id="drop-title">Drop race card PDF here</div>
+        <div class="drop-hint" id="drop-hint">or tap to browse — PDF only</div>
+      </div>
+
+      <button class="btn-analyse" id="btn-analyse" disabled>
+        Analyse Race Card
+      </button>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="screen-loading" style="display:none">
+      <div class="loading-state">
+        <div class="loading-dog">🐕</div>
+        <div class="loading-title">Reading the form…</div>
+        <div class="loading-sub">Analysing box draws, recent runs &amp; times</div>
+      </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="screen-results" style="display:none"></div>
+  </main>
+</div>
+
+<!-- Install Banner -->
+<div id="install-banner">
+  <div class="install-text">
+    <strong>Add to Home Screen</strong>
+    Install BoxForm AU for quick access
+  </div>
+  <button class="btn-install" id="btn-install">Install</button>
+  <button class="btn-dismiss" id="btn-dismiss">✕</button>
+</div>
+
+<script>
+// ── BOX COLOURS (Australian standard) ──
+const BOX_STYLES = [
+  { bg: '#e63946', color: '#fff' },   // 1 Red
+  { bg: '#3a86ff', color: '#fff' },   // 2 Blue
+  { bg: '#ffffff', color: '#111' },   // 3 White
+  { bg: '#1a1a1a', color: '#fff' },   // 4 Black
+  { bg: '#f4a261', color: '#111' },   // 5 Orange (Fawn)
+  { bg: '#1a1a1a', color: '#f4a261'},// 6 Black/Gold
+  { bg: '#d1c4e9', color: '#111' },   // 7 Violet
+  { bg: '#aaaaaa', color: '#111' },   // 8 Pink/Grey
+];
+
+// ── STATE ──
+let selectedFile = null;
+let deferredInstallPrompt = null;
+
+// ── ELEMENTS ──
+const dropZone     = document.getElementById('drop-zone');
+const fileInput    = document.getElementById('file-input');
+const dropTitle    = document.getElementById('drop-title');
+const dropHint     = document.getElementById('drop-hint');
+const btnAnalyse   = document.getElementById('btn-analyse');
+const errorBox     = document.getElementById('error-box');
+const screenUpload = document.getElementById('screen-upload');
+const screenLoad   = document.getElementById('screen-loading');
+const screenRes    = document.getElementById('screen-results');
+const installBanner= document.getElementById('install-banner');
+
+// ── FILE HANDLING ──
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file || file.type !== 'application/pdf') {
+    showError('Please select a PDF file.');
+    return;
+  }
+  selectedFile = file;
+  dropTitle.textContent = file.name;
+  dropTitle.classList.add('file-chosen');
+  dropHint.textContent = '✓ Ready to analyse';
+  btnAnalyse.disabled = false;
+  hideError();
+}
+
+// ── ANALYSE ──
+btnAnalyse.addEventListener('click', analyseRace);
+
+async function analyseRace() {
+  if (!selectedFile) return;
+  showScreen('loading');
+
+  try {
+    const base64 = await toBase64(selectedFile);
+    const result = await callClaude(base64);
+    renderResults(result);
+    showScreen('results');
+  } catch (err) {
+    showScreen('upload');
+    showError('Could not analyse the race card. Please check your PDF and try again. ' + err.message);
+  }
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('File read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+// ── CLAUDE API ──
+async function callClaude(base64) {
+  const systemPrompt = `You are an expert Australian greyhound racing analyst with deep knowledge of:
+- All Australian state bodies: GRNSW (NSW), GRV (Victoria), GBOTA (Queensland), GRSA (SA), RWWA (WA), TGRC (Tasmania), NTGRA (NT)
+- Australian grading systems: Maidens, Grade 5 down to Grade 1, Free-For-All (FFA), Restricted Win (RW), Provincial, City, and Country meetings
+- Australian box draw (boxes 1–8, occasionally reserves), box advantages by track
+- Australian race distances (typically 280m, 302m, 395m, 440m, 485m, 520m, 595m, 710m depending on track)
+- Key Australian tracks: The Meadows, Sandown Park, Wentworth Park, Albion Park, Capalaba, Angle Park, Cannington, Hobart, Alice Springs, Darwin
+- Australian form notation: recent runs in reverse chronological order, sectional times (early pace / split times), weight in kg, trainer/owner names
+- Going conditions relevant to Australia: Good, Soft, Heavy, Fast, Firm
+- Australian betting terms: Win, Place, Each Way, Quinella, Exacta, Trifecta, First 4, Quadrella
+
+When analysing the form guide, extract and weigh:
+1. Box draw advantage/disadvantage at the specific track
+2. Recent form (last 6 starts), paying attention to consistency and recency
+3. Sectional times (first split) as an early pace indicator — very important
+4. Best times at the track and distance
+5. Grade of recent wins vs current grade
+6. Trainer form and stable conditions
+7. Weight (heavier dogs can have different abilities)
+8. Days since last start (fitness)
+9. Track and distance suitability
+
+Respond ONLY with a valid JSON object — no markdown, no backticks, no preamble — in this exact structure:
+{
+  "raceName": "string",
+  "venue": "string",
+  "state": "string (e.g. VIC, NSW, QLD)",
+  "distance": "string (e.g. 520m)",
+  "grade": "string (e.g. Grade 5)",
+  "raceDate": "string or null",
+  "raceTime": "string or null",
+  "going": "string or null",
+  "summary": "string (2-3 sentences overview of the race)",
+  "predictions": [
+    {
+      "position": 1,
+      "box": number,
+      "name": "string",
+      "trainer": "string or null",
+      "recentForm": "string (e.g. 1-2-1-3-5-1) or null",
+      "bestTime": "string or null",
+      "weight": "string or null",
+      "earlyPace": "Fast|Medium|Slow or null",
+      "confidence": "Low|Medium|High|Very High",
+      "reasoning": "string (2-3 sentences)"
+    }
+  ],
+  "keyFactors": ["string", "string"],
+  "disclaimer": "AI tips are for entertainment only. Please gamble responsibly. Call Gambling Help on 1800 858 858."
+}
+
+Include ALL dogs in predictions ordered 1st to last. If multiple races exist, analyse the feature or main race.`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: 'Analyse this Australian greyhound race form guide and return your predicted finishing order as a JSON object.' }
+        ]
+      }]
+    })
+  });
+
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error?.message || 'API error');
+
+  const raw = data.content.map(b => b.text || '').join('');
+  const clean = raw.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+// ── RENDER RESULTS ──
+function renderResults(r) {
+  const confLevels = { 'Low': 1, 'Medium': 2, 'High': 3, 'Very High': 4 };
+
+  const metaPills = [r.distance, r.grade, r.going, r.state, r.raceDate, r.raceTime]
+    .filter(Boolean)
+    .map(v => `<span class="meta-pill">${esc(v)}</span>`)
+    .join('');
+
+  const predictions = (r.predictions || []).map(dog => {
+    const idx = (dog.box || 1) - 1;
+    const style = BOX_STYLES[idx] || BOX_STYLES[0];
+    const medal = dog.position === 1 ? '🥇' : dog.position === 2 ? '🥈' : dog.position === 3 ? '🥉' : null;
+    const confLevel = confLevels[dog.confidence] || 0;
+    const pips = [1,2,3,4].map(i =>
+      `<div class="conf-pip ${i <= confLevel ? 'on' : ''}"></div>`
+    ).join('');
+
+    const metas = [
+      dog.trainer ? `T: ${esc(dog.trainer)}` : null,
+      dog.bestTime ? `Best: ${esc(dog.bestTime)}` : null,
+      dog.weight ? esc(dog.weight) : null,
+      dog.earlyPace ? `Pace: ${esc(dog.earlyPace)}` : null
+    ].filter(Boolean).map(m => `<span>${m}</span>`).join('');
+
+    return `
+    <div class="dog-card ${dog.position <= 3 ? 'top3' : ''} ${dog.position === 1 ? 'first' : ''}">
+      <div class="pos-col">
+        ${medal ? `<div class="pos-medal">${medal}</div>` : `<div class="pos-num">${dog.position}</div>`}
+      </div>
+      <div class="box-badge" style="background:${style.bg};color:${style.color};border:${idx===2?'2px solid #ccc':'2px solid transparent'}">${dog.box || '?'}</div>
+      <div class="dog-body">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="dog-name">${esc(dog.name)}</span>
+          ${dog.recentForm ? `<span class="form-string">${esc(dog.recentForm)}</span>` : ''}
+        </div>
+        <div class="dog-meta">${metas}</div>
+        ${dog.reasoning ? `<div class="dog-reason">${esc(dog.reasoning)}</div>` : ''}
+        <div class="conf-row">
+          ${pips}
+          <span class="conf-label">${esc(dog.confidence || '')}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const factors = (r.keyFactors || []).map(f =>
+    `<div class="factor-item"><span class="factor-arrow">▸</span><span>${esc(f)}</span></div>`
+  ).join('');
+
+  screenRes.innerHTML = `
+    <div class="race-card">
+      <div class="race-eyebrow">${esc(r.venue || 'Australian Greyhound Racing')}</div>
+      <div class="race-name">${esc(r.raceName || 'Race Analysis')}</div>
+      <div class="race-meta">${metaPills}</div>
+      ${r.summary ? `<div class="race-summary">${esc(r.summary)}</div>` : ''}
+    </div>
+
+    <div class="section-label">Predicted Finishing Order</div>
+    ${predictions}
+
+    ${factors ? `
+    <div class="factors-card" style="margin-top:14px">
+      <div class="section-label" style="margin-bottom:8px">Key Race Factors</div>
+      ${factors}
+    </div>` : ''}
+
+    <div class="disclaimer">⚠️ ${esc(r.disclaimer || 'AI tips are for entertainment only. Please gamble responsibly.')}</div>
+
+    <button class="btn-back" id="btn-back">← Analyse Another Race Card</button>
+  `;
+
+  document.getElementById('btn-back').addEventListener('click', resetToUpload);
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function resetToUpload() {
+  selectedFile = null;
+  fileInput.value = '';
+  dropTitle.textContent = 'Drop race card PDF here';
+  dropTitle.classList.remove('file-chosen');
+  dropHint.textContent = 'or tap to browse — PDF only';
+  btnAnalyse.disabled = true;
+  hideError();
+  showScreen('upload');
+}
+
+function showScreen(name) {
+  screenUpload.style.display = name === 'upload' ? '' : 'none';
+  screenLoad.style.display   = name === 'loading' ? '' : 'none';
+  screenRes.style.display    = name === 'results' ? '' : 'none';
+}
+
+function showError(msg) {
+  errorBox.textContent = '⚠️ ' + msg;
+  errorBox.style.display = '';
+}
+function hideError() { errorBox.style.display = 'none'; }
+
+// ── PWA INSTALL ──
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installBanner.classList.add('visible');
+});
+
+document.getElementById('btn-install').addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') installBanner.classList.remove('visible');
+  deferredInstallPrompt = null;
+});
+
+document.getElementById('btn-dismiss').addEventListener('click', () => {
+  installBanner.classList.remove('visible');
+});
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
